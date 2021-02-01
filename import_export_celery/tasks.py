@@ -87,7 +87,7 @@ def _run_import_job(import_job, dry_run=True):
 
     resource = Resource()
 
-    result = resource.import_data(dataset, dry_run=dry_run)
+    result = resource.import_data(dataset, dry_run=dry_run,**{'import_job_id':import_job.id})
     change_job_status(import_job, "import", "4/5 Generating import summary", dry_run)
     for error in result.base_errors:
         import_job.errors += "\n%s\n%s\n" % (error.error, error.traceback)
