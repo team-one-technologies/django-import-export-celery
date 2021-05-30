@@ -47,7 +47,7 @@ def get_format(job):
             break
 
 
-def _run_import_job(import_job, dry_run=True):
+def _run_import_job(import_job, dry_run=True,raise_errors=False):
     change_job_status(import_job, "import", "1/5 Import started", dry_run)
     if dry_run:
         import_job.errors = ""
@@ -91,7 +91,7 @@ def _run_import_job(import_job, dry_run=True):
 
     resource = Resource(import_job=import_job)
 
-    result = resource.import_data(dataset, dry_run=dry_run,**{'import_job_id':import_job.id})
+    result = resource.import_data(dataset, dry_run=dry_run,raise_errors=False,**{'import_job_id':import_job.id})
     change_job_status(import_job, "import", "4/5 Generating import summary", dry_run)
     for error in result.base_errors:
         import_job.errors += "\n%s\n%s\n" % (error.error, error.traceback)
@@ -113,11 +113,11 @@ def _run_import_job(import_job, dry_run=True):
 
 
 @shared_task(bind=False)
-def run_import_job(pk, dry_run=True):
+def run_import_job(pk, dry_run=True,raise_errors=False):
     log.info("Importing %s dry-run %s" % (pk, dry_run))
     import_job = models.ImportJob.objects.get(pk=pk)
     try:
-        _run_import_job(import_job, dry_run)
+        _run_import_job(import_job, dry_run,raise_errors)
     except Exception as e:
         import_job.errors += _("Import error %s") % e + "\n"
         change_job_status(import_job, "import", "Import error", dry_run)
