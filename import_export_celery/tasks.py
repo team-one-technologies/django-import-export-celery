@@ -3,7 +3,7 @@
 from datetime import datetime
 import os
 
-from celery import task
+from celery import shared_task
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -73,6 +73,10 @@ def _run_import_job(import_job, dry_run=True):
     change_job_status(import_job, "import", "2/5 Processing import data", dry_run)
 
     class Resource(model_config.resource):
+        def __init__(self, import_job, *args, **kwargs):
+            self.import_job = import_job
+            super().__init__(*args, **kwargs)
+
         def before_import_row(self, row, **kwargs):
             if "row_number" in kwargs:
                 row_number = kwargs["row_number"]
@@ -85,7 +89,7 @@ def _run_import_job(import_job, dry_run=True):
                     )
             return super(Resource, self).before_import_row(row, **kwargs)
 
-    resource = Resource()
+    resource = Resource(import_job=import_job)
 
     result = resource.import_data(dataset, dry_run=dry_run,**{'import_job_id':import_job.id})
     change_job_status(import_job, "import", "4/5 Generating import summary", dry_run)
@@ -108,7 +112,7 @@ def _run_import_job(import_job, dry_run=True):
     import_job.save()
 
 
-@task(bind=False)
+@shared_task(bind=False)
 def run_import_job(pk, dry_run=True):
     log.info("Importing %s dry-run %s" % (pk, dry_run))
     import_job = models.ImportJob.objects.get(pk=pk)
@@ -121,7 +125,7 @@ def run_import_job(pk, dry_run=True):
         return
 
 
-@task(bind=False)
+@shared_task(bind=False)
 def run_export_job(pk):
     log.info("Exporting %s" % pk)
     export_job = models.ExportJob.objects.get(pk=pk)
@@ -132,6 +136,7 @@ def run_export_job(pk):
     class Resource(resource_class):
         def __init__(self, *args, **kwargs):
             self.row_number = 1
+            self.export_job = export_job
             super().__init__(*args, **kwargs)
 
         def export_resource(self, *args, **kwargs):
@@ -144,7 +149,7 @@ def run_export_job(pk):
             self.row_number += 1
             return super(Resource, self).export_resource(*args, **kwargs)
 
-    resource = Resource()
+    resource = Resource(export_job=export_job)
 
     data = resource.export(queryset)
     format = get_format(export_job)
