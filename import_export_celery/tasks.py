@@ -97,7 +97,7 @@ def _run_import_job(import_job, dry_run=True,raise_errors=False):
         import_job.errors += "\n%s\n" % (error.error)
     for line, errors in result.row_errors():
         for error in errors:
-            import_job.errors += _("Line: %s - %s") % (
+            import_job.errors += _("Line: %s - %s\n") % (
                 line,
                 error.error
             )
