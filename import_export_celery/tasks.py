@@ -77,9 +77,8 @@ def _run_import_job(import_job, dry_run=True,raise_errors=False):
             self.import_job = import_job
             super().__init__(*args, **kwargs)
 
-        def before_import_row(self, row, **kwargs):
-            if "row_number" in kwargs:
-                row_number = kwargs["row_number"]
+        def before_import_row(self, row, row_number=None,**kwargs):
+            if row_number:
                 if row_number % 100 == 0 or row_number == 1:
                     change_job_status(
                         import_job,
